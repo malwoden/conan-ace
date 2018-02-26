@@ -35,6 +35,9 @@ class AceConan(ConanFile):
 
                         self.run("$ACE_ROOT/bin/mwc.pl -type gnuace ACE.mwc")
                         with tools.chdir("ace"):
+                            make_cmd = "make"
+                            make_cmd = make_cmd + (" shared_libs=1" if self.options.shared else " static_libs=1")
+                            make_cmd = make_cmd + (" debug=1" if self.settings.build_type == 'Debug' else "")
                             self.run("make -j4 && make install")
         else:
             raise tools.ConanException("Build not setup for %s" % self.settings.os)
