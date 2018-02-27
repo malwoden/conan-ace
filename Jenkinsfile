@@ -6,6 +6,6 @@ node {
     }
 
     stage('Build') {
-        conan.run(command: "create . user/testing -s build_type=Debug")
+        client.run(command: "create . user/testing -s build_type=Debug")
     }
 }
