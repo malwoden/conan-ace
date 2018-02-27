@@ -1,8 +1,10 @@
 pipeline {
+    agent none
     stages {
         stage('Parallel steps') {
             parallel {
                 stage('Linux Debug Static') {
+                    agent any
                     steps {
                         checkout scm
                         script {
@@ -12,6 +14,7 @@ pipeline {
                     }
                 }
                 stage('Linux Debug Shared') {
+                    agent any
                     steps {
                         checkout scm
                         script {
@@ -21,6 +24,7 @@ pipeline {
                     }
                 }
                 stage('Linux Release Static') {
+                    agent any
                     steps {
                         checkout scm
                         script {
@@ -30,6 +34,7 @@ pipeline {
                     }
                 }
                 stage('Linux Release Shared') {
+                    agent any
                     steps {
                         checkout scm
                         script {
