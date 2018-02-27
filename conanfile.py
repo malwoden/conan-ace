@@ -1,5 +1,4 @@
 from conans import ConanFile, AutoToolsBuildEnvironment, tools
-import os
 
 class AceConan(ConanFile):
     name = "ace"
@@ -38,7 +37,7 @@ class AceConan(ConanFile):
                             make_cmd = "make"
                             make_cmd = make_cmd + (" shared_libs=1" if self.options.shared else " static_libs=1")
                             make_cmd = make_cmd + (" debug=1" if self.settings.build_type == 'Debug' else "")
-                            print("make cmd: " + make_cmd)
+                            print "make cmd: " + make_cmd
                             # self.run("make -j4 && make install")
         else:
             raise tools.ConanException("Build not setup for %s" % self.settings.os)
