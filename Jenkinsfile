@@ -9,7 +9,7 @@ pipeline {
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=False")
+                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=False --build missing")
                         }
                     }
                 }
@@ -19,7 +19,7 @@ pipeline {
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=True")
+                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=True --build missing")
                         }
                     }
                 }
@@ -29,7 +29,7 @@ pipeline {
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=False")
+                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=False --build missing")
                         }
                     }
                 }
@@ -39,7 +39,7 @@ pipeline {
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=True")
+                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=True --build missing")
                         }
                     }
                 }
