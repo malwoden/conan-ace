@@ -64,6 +64,8 @@ class AceConan(ConanFile):
     def package(self):
         install_src_abs = self.source_folder + "/ACE_wrappers/build_install"
         self.copy("*.h", dst="include", src=install_src_abs + "/include")
+        # ace has template funcs in cpp files included in header files
+        self.copy("*.cpp", dst="include", src=install_src_abs + "/include")
         self.copy("*.inl", dst="include", src=install_src_abs + "/include")
         self.copy("*.so*", dst="lib", src=install_src_abs + "/lib", keep_path=False)
         self.copy("*.dylib", dst="lib", keep_path=False)
