@@ -52,7 +52,7 @@ class AceConan(ConanFile):
                         with tools.chdir("ace"):
                             make_cmd = "make"
                             make_cmd = make_cmd + (" shared_libs=1" if self.options.shared else " static_libs=1")
-                            make_cmd = make_cmd + (" debug=1" if self.settings.build_type == 'Debug' else "optimize=1")
+                            make_cmd = make_cmd + (" debug=1" if self.settings.build_type == 'Debug' else " optimize=1")
 
                             if self.options.openssl or self.options.openssl11:
                                 self.run("CFLAGS=\"-I%s\" %s && make install" % (openssl_include_path, make_cmd))
