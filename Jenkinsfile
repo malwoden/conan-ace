@@ -6,6 +6,7 @@ pipeline {
                 stage('Linux Debug Static') {
                     agent any
                     steps {
+                        cleanWs()
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
@@ -16,6 +17,7 @@ pipeline {
                 stage('Linux Debug Shared') {
                     agent any
                     steps {
+                        cleanWs()
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
@@ -26,6 +28,7 @@ pipeline {
                 stage('Linux Release Static') {
                     agent any
                     steps {
+                        cleanWs()
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
@@ -36,6 +39,7 @@ pipeline {
                 stage('Linux Release Shared') {
                     agent any
                     steps {
+                        cleanWs()
                         checkout scm
                         script {
                             def client = Artifactory.newConanClient()
