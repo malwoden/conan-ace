@@ -75,4 +75,5 @@ class AceConan(ConanFile):
 
     def package_info(self):
         if self.settings.os == "Linux":
-            self.cpp_info.libs = tools.collect_libs(self) 
+            self.cpp_info.libs = tools.collect_libs(self)
+            self.cpp_info.cppflags = ["-pthread"]
