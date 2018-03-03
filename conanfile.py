@@ -41,8 +41,14 @@ class AceConan(ConanFile):
 
                         with open("%s/include/makeinclude/platform_macros.GNU" % ace_wrappers_path_abs, "w+") as f:
                             f.write("INSTALL_PREFIX = " + install_location)
-                            f.write("\nssl=1" if self.options.openssl else "")
-                            f.write("\ninclude %s/include/makeinclude/platform_linux.GNU" % ace_wrappers_path_abs)
+                            f.write("\n")
+                            f.write("ssl=1" if self.options.openssl else "")
+                            f.write("\n")
+                            f.write("shared_libs_only=1" if self.options.shared else "static_libs_only=1")
+                            f.write("\n")
+                            f.write("debug=1" if self.settings.build_type == "Debug" else "optimize=1")
+                            f.write("\n")
+                            f.write("include %s/include/makeinclude/platform_linux.GNU" % ace_wrappers_path_abs)
 
                         openssl_include_path = ""
                         if self.options.openssl or self.options.openssl11:
@@ -50,12 +56,8 @@ class AceConan(ConanFile):
 
                         self.run("$ACE_ROOT/bin/mwc.pl -type gnuace ACE.mwc")
                         with tools.chdir("ace"):
-                            make_cmd = "make"
-                            make_cmd = make_cmd + (" shared_libs=1" if self.options.shared else " static_libs=1")
-                            make_cmd = make_cmd + (" debug=1" if self.settings.build_type == 'Debug' else " optimize=1")
-
                             if self.options.openssl or self.options.openssl11:
-                                self.run("CFLAGS=\"-I%s\" %s && make install" % (openssl_include_path, make_cmd))
+                                self.run("CFLAGS=\"-I%s\" make && make install" % openssl_include_path)
                             else:
                                 self.run("make && make install")
         else:
