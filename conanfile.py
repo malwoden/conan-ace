@@ -61,6 +61,7 @@ class AceConan(ConanFile):
                             else:
                                 self.run("make -j %s && make install" % str(cpu_count()))
         else:
+            # add openssl11=1 for windows ace builds
             raise tools.ConanException("Build not setup for %s" % self.settings.os)
 
     def package(self):
@@ -77,3 +78,5 @@ class AceConan(ConanFile):
         if self.settings.os == "Linux":
             self.cpp_info.libs = tools.collect_libs(self)
             self.cpp_info.cppflags = ["-pthread"]
+            self.cpp_info.exelinkflags.append("-ldl")
+            self.cpp_info.sharedlinkflags = self.cpp_info.exelinkflags
