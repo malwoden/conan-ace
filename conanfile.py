@@ -1,5 +1,6 @@
 from __future__ import print_function
 from conans import ConanFile, AutoToolsBuildEnvironment, tools
+from conans.tools import cpu_count
 
 class AceConan(ConanFile):
     name = "ace"
@@ -9,7 +10,7 @@ class AceConan(ConanFile):
     description = "<Description of Ace here>"
     settings = "os", "compiler", "build_type", "arch"
     options = {"shared": [True, False], "openssl": [True, False], "openssl11": [True, False]}
-    default_options = "shared=False", "openssl=True", "openssl11=False", "OpenSSL:shared=True"
+    default_options = "shared=False", "openssl=False", "openssl11=False", "OpenSSL:shared=True"
 
     def configure(self):
         if self.options.openssl and self.options.openssl11:
@@ -40,15 +41,14 @@ class AceConan(ConanFile):
                             f.write("#include \"ace/config-linux.h\"")
 
                         with open("%s/include/makeinclude/platform_macros.GNU" % ace_wrappers_path_abs, "w+") as f:
-                            f.write("INSTALL_PREFIX = " + install_location)
-                            f.write("\n")
-                            f.write("ssl=1" if self.options.openssl else "")
-                            f.write("\n")
-                            f.write("shared_libs_only=1" if self.options.shared else "static_libs_only=1")
-                            f.write("\n")
-                            f.write("debug=1" if self.settings.build_type == "Debug" else "optimize=1")
-                            f.write("\n")
-                            f.write("include %s/include/makeinclude/platform_linux.GNU" % ace_wrappers_path_abs)
+                            file_strings = []
+                            file_strings.append("INSTALL_PREFIX = " + install_location)
+                            file_strings.append("ssl=1" if self.options.openssl else "ssl=0")
+                            file_strings.append("shared_libs_only=1" if self.options.shared else "static_libs_only=1")
+                            file_strings.append("buildbits=32" if self.settings.arch == "x86" else "buildbits=64")
+                            file_strings.append("debug=1" if self.settings.build_type == "Debug" else "optimize=1")
+                            file_strings.append("include %s/include/makeinclude/platform_linux.GNU" % ace_wrappers_path_abs)
+                            f.writelines(line + '\n' for line in file_strings)
 
                         openssl_include_path = ""
                         if self.options.openssl or self.options.openssl11:
@@ -57,9 +57,9 @@ class AceConan(ConanFile):
                         self.run("$ACE_ROOT/bin/mwc.pl -type gnuace ACE.mwc")
                         with tools.chdir("ace"):
                             if self.options.openssl or self.options.openssl11:
-                                self.run("CFLAGS=\"-I%s\" make && make install" % openssl_include_path)
+                                self.run("CFLAGS=\"-I%s\" make -j %s && make install" % (openssl_include_path, str(cpu_count())))
                             else:
-                                self.run("make && make install")
+                                self.run("make -j %s && make install" % str(cpu_count()))
         else:
             raise tools.ConanException("Build not setup for %s" % self.settings.os)
 

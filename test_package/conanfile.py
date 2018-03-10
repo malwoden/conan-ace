@@ -1,9 +1,20 @@
 from conans import ConanFile, CMake, tools
+from conans.tools import os_info, SystemPackageTool
 import os
 
 class AceTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
+
+    def system_requirements(self):
+        pack_names = None
+        if os_info.linux_distro == "ubuntu":
+            pack_names = ["xutils-dev"]
+
+        if pack_names:
+            installer = SystemPackageTool()
+            installer.update()
+            installer.install(" ".join(pack_names))
 
     def build(self):
         cmake = CMake(self)
