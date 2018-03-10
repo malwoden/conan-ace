@@ -3,51 +3,43 @@ pipeline {
     stages {
         stage('Parallel steps') {
             parallel {
-                stage('Linux Debug Static') {
+                stage('Page 1/4') {
                     agent any
                     steps {
                         cleanWs()
                         checkout scm
                         script {
-                            sh "ls -la ${pwd()}"
-                            def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=False --build missing")
+                            sh "CONAN_TOTAL_PAGES=4 CONAN_CURRENT_PAGE=1 python build.py"
                         }
                     }
                 }
-                stage('Linux Debug Shared') {
+                stage('Page 2/4') {
                     agent any
                     steps {
                         cleanWs()
                         checkout scm
                         script {
-                            sh "ls -la ${pwd()}"
-                            def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Debug -o ace:shared=True --build missing")
+                            sh "CONAN_TOTAL_PAGES=4 CONAN_CURRENT_PAGE=2 python build.py"
                         }
                     }
                 }
-                stage('Linux Release Static') {
+                stage('Page 3/4') {
                     agent any
                     steps {
                         cleanWs()
                         checkout scm
                         script {
-                            sh "ls -la ${pwd()}"
-                            def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=False --build missing")
+                            sh "CONAN_TOTAL_PAGES=4 CONAN_CURRENT_PAGE=3 python build.py"
                         }
                     }
                 }
-                stage('Linux Release Shared') {
+                stage('Page 4/4') {
                     agent any
                     steps {
                         cleanWs()
                         checkout scm
                         script {
-                            sh "ls -la ${pwd()}"
-                            def client = Artifactory.newConanClient()
-                            client.run(command: "create . user/testing -s build_type=Release -o ace:shared=True --build missing")
+                            sh "CONAN_TOTAL_PAGES=4 CONAN_CURRENT_PAGE=4 python build.py"
                         }
                     }
                 }
