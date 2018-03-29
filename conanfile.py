@@ -1,6 +1,7 @@
 from __future__ import print_function
 from conans import ConanFile, AutoToolsBuildEnvironment, MSBuild, tools
 from conans.tools import cpu_count
+import re, glob
 
 class AceConan(ConanFile):
     name = "ace"
@@ -16,6 +17,10 @@ class AceConan(ConanFile):
         if self.options.openssl and self.options.openssl11:
             raise tools.ConanException("Cannot build with openssl and openssl11 flags")
 
+    def build_requirements(self):
+        if self.settings.os == "Windows":
+            self.build_requires("strawberryperl/5.26.0@conan/stable")
+
     def requirements(self):
         if self.options.openssl:
             self.requires("OpenSSL/1.0.2n@conan/stable")
@@ -27,7 +32,7 @@ class AceConan(ConanFile):
 
     def build_linux(self, ace_wrappers_path_abs):
         env_build = AutoToolsBuildEnvironment(self)
-        # for the scope of the 'with' add the autotools env vars to the current context
+
         with tools.environment_append(env_build.vars):
             with tools.environment_append({"ACE_ROOT": ace_wrappers_path_abs}):
                 with tools.chdir(ace_wrappers_path_abs):
@@ -63,39 +68,53 @@ class AceConan(ConanFile):
         if self.options.openssl or self.options.openssl11:
             openssl_include_path = self.deps_cpp_info["OpenSSL"].rootpath
 
-        # for the scope of the 'with' add the autotools env vars to the current context
         with tools.environment_append({"ACE_ROOT": ace_wrappers_path_abs, "SSL_ROOT": openssl_include_path}):
             with tools.chdir(ace_wrappers_path_abs):
-                install_location = ace_wrappers_path_abs + "/build_install"
-                tools.mkdir(install_location)
-
                 with open("%s/ace/config.h" % ace_wrappers_path_abs, "w+") as f:
                     f.write("#include \"ace/config-win32.h\"")
 
-                with open("%s/local.features" % ace_wrappers_path_abs, "w+") as f:
+                with open("%s/bin/MakeProjectCreator/config/default.features" % ace_wrappers_path_abs, "w+") as f:
                     file_strings = []
-                    file_strings.append("ssl=1" if self.options.openssl else "ssl=0")
+                    file_strings.append("ssl=1" if self.options.openssl or self.options.openssl11 else "ssl=0")
+                    file_strings.append("openssl11=1" if self.options.openssl11 else "openssl11=0")
                     f.writelines(line + '\n' for line in file_strings)
 
-# http://downloads.ociweb.com/MPC/docs/html/MakeProjectCreator.html
                 with tools.chdir("ace"):
+                    # TODO: need to set type based on the compiler version
                     self.run("perl %%ACE_ROOT%%/bin/mwc.pl -type vs2017 %s ACE.mwc" % ("" if self.options.shared else "-static"))
-                    tools.replace_in_file("ACE.vcxproj", "MultiThreadedDebug", "MultiThreadedDebugDLL")
-                    tools.replace_in_file("ACE.vcxproj", "MultiThreaded", "MultiThreadedDLL")
+                    tools.replace_in_file("ACE.vcxproj", "<RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>", strict=False)
+                    tools.replace_in_file("ACE.vcxproj", "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>", strict=False)
+
+                    build_targets = ["ACE"]
+
+                    if self.options.openssl or self.options.openssl11:
+                        tools.replace_in_file("SSL/SSL.vcxproj", "<RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>", strict=False)
+                        tools.replace_in_file("SSL/SSL.vcxproj", "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>", strict=False)
+                        build_targets.append("SSL")
+
                     msbuild = MSBuild(self)
-                    msbuild.build("ACE.sln", targets=["ACE"], upgrade_project=True)
+                    msbuild.build("ACE.sln", targets=build_targets, upgrade_project=True)
 
     def build(self):
-        self.ace_wrappers_path_abs = self.source_folder + "/ACE_wrappers"
+        ace_wrappers_path_abs = self.source_folder + "/ACE_wrappers"
 
         if self.settings.os == "Linux":
-            self.build_linux(self.ace_wrappers_path_abs)
+            self.build_linux(ace_wrappers_path_abs)
         else:
-            # add openssl11=1 for windows ace builds
-            self.build_windows(self.ace_wrappers_path_abs)
+            self.build_windows(ace_wrappers_path_abs)
+
+    # ACE includes cpp files from header files, so we need to find those files
+    # and add them to the include path files
+    def copy_include_cpp_files(self, ace_wrappers_path):
+        pattern = re.compile(r"#pragma implementation \(\"(.*)\"\)$")
+
+        for filename in glob.iglob(ace_wrappers_path + "/ace/*.h"):
+            for _, line in enumerate(open(filename)):
+                for match in re.finditer(pattern, line):
+                    self.copy(match.groups()[0], dst="include/ace", src=ace_wrappers_path + "/ace")
 
     def package(self):
-        if (self.settings.os == "Linux"):
+        if self.settings.os == "Linux":
             install_src_abs = self.source_folder + "/ACE_wrappers/build_install"
             self.copy("*.h", dst="include", src=install_src_abs + "/include")
             # ace has template funcs in cpp files included in header files
@@ -106,15 +125,20 @@ class AceConan(ConanFile):
             self.copy("*.a*", dst="lib",  src=install_src_abs + "/lib", keep_path=False)
         else:
             ace_src_path = self.source_folder + "/ACE_wrappers"
+            ace_lib_path = ace_src_path + "/lib"
+
+            static_lib_name = "ACEs.lib" if self.settings.build_type == "Release" else "ACEsd.lib"
+            # No install target for windows builds, so we have to construct the package manually
             self.copy("*.h", dst="include/ace", src=ace_src_path + "/ace")
-            self.copy("Auto_Ptr.cpp", dst="include/ace", src=ace_src_path + "/ace")
-            # ace has template funcs in cpp files included in header files
-            # self.copy("*.cpp", dst="include", src=install_src_abs + "/include")
             self.copy("*.inl", dst="include/ace", src=ace_src_path + "/ace")
-            self.copy("*.lib" if self.options.shared else "*s.lib", dst="lib", src=ace_src_path + "/lib", keep_path=False)
+            self.copy("*.lib" if self.options.shared else static_lib_name, dst="lib", src=ace_lib_path, keep_path=False)
+            self.copy("*.dll", dst="bin", src=ace_lib_path)
+            self.copy_include_cpp_files(ace_src_path)
 
     def package_info(self):
+        self.cpp_info.libs = tools.collect_libs(self)
+        if not self.options.shared:
+            self.cpp_info.defines = ["ACE_AS_STATIC_LIBS"]
         if self.settings.os == "Linux":
-            self.cpp_info.libs = tools.collect_libs(self)
             self.cpp_info.libs.append("dl")
             self.cpp_info.cppflags = ["-pthread"]
