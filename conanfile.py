@@ -64,12 +64,25 @@ class AceConan(ConanFile):
                         else:
                             self.run("make -j %s && make install" % str(cpu_count()))
 
-    def build_windows(self, ace_wrappers_path_abs):
+    def msvc_compiler_to_mwc_type(self):
+        return {
+            "10": "vc10",
+            "11": "vc11",
+            "12": "vc12",
+            "14": "vc14",
+            "15": "vs2017"
+        }[self.settings.compiler.version]
+
+    def build_windows_msvc(self, ace_wrappers_path_abs):
         openssl_include_path = ""
         if self.options.openssl or self.options.openssl11:
             openssl_include_path = self.deps_cpp_info["OpenSSL"].rootpath
 
-        with tools.environment_append({"ACE_ROOT": ace_wrappers_path_abs, "SSL_ROOT": openssl_include_path}):
+        with tools.environment_append(
+                {"ACE_ROOT": ace_wrappers_path_abs,
+                 "SSL_ROOT": openssl_include_path,
+                 "CL": "/MP%s" % str(cpu_count())}):
+
             with tools.chdir(ace_wrappers_path_abs):
                 with open("%s/ace/config.h" % ace_wrappers_path_abs, "w+") as f:
                     f.write("#include \"ace/config-win32.h\"")
@@ -81,21 +94,17 @@ class AceConan(ConanFile):
                     f.writelines(line + '\n' for line in file_strings)
 
                 with tools.chdir("ace"):
-                    # TODO: need to set type based on the compiler version
-                    self.run("perl %%ACE_ROOT%%/bin/mwc.pl -type vs2017 %s ACE.mwc" % ("" if self.options.shared else "-static"))
-                    tools.replace_in_file("ACE.vcxproj", "<RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>", strict=False)
-                    tools.replace_in_file("ACE.vcxproj", "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>", strict=False)
+                    self.run("perl %%ACE_ROOT%%/bin/mwc.pl -type %s %s ACE.mwc"
+                        % (self.msvc_compiler_to_mwc_type(), "" if self.options.shared else "-static"))
 
                     build_targets = ["ACE"]
 
                     if self.options.openssl or self.options.openssl11:
-                        tools.replace_in_file("SSL/SSL.vcxproj", "<RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>", strict=False)
-                        tools.replace_in_file("SSL/SSL.vcxproj", "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>", strict=False)
                         build_targets.append("SSL")
 
-                    with tools.environment_append({'CL': '/MP%s' % str(cpu_count())}):
-                        msbuild = MSBuild(self)
-                        msbuild.build("ACE.sln", targets=build_targets, upgrade_project=True, platforms={'x86': 'Win32', 'x86_64': 'x64'})
+                    msbuild = MSBuild(self)
+                    msbuild.build("ACE.sln", targets=build_targets, upgrade_project=True,
+                        platforms={'x86': 'Win32', 'x86_64': 'x64'}, parallel=False)
 
     def build(self):
         ace_wrappers_path_abs = self.source_folder + "/ACE_wrappers"
@@ -103,7 +112,7 @@ class AceConan(ConanFile):
         if self.settings.os == "Linux":
             self.build_linux(ace_wrappers_path_abs)
         else:
-            self.build_windows(ace_wrappers_path_abs)
+            self.build_windows_msvc(ace_wrappers_path_abs)
 
     # ACE includes cpp files from header files, so we need to find those files
     # and add them to the include path files
