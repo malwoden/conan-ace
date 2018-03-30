@@ -6,9 +6,9 @@ import re, glob
 class AceConan(ConanFile):
     name = "ace"
     version = "6.4.6"
-    license = "<Put the package license here>"
-    url = "<Package recipe repository url here, for issues about the package>"
-    description = "<Description of Ace here>"
+    license = "ACE has its own liberal license, somewhat like MIT or BSD"
+    url = "https://github.com/malwoden/conan-ace"
+    description = "ACE is a cpp utility framework focused on concurrent communication software"
     settings = "os", "compiler", "build_type", "arch"
     # TODO: lots of options to add for different config defines
     options = {"shared": [True, False], "openssl": [True, False], "openssl11": [True, False]}
