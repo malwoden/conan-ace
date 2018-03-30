@@ -10,6 +10,7 @@ class AceConan(ConanFile):
     url = "<Package recipe repository url here, for issues about the package>"
     description = "<Description of Ace here>"
     settings = "os", "compiler", "build_type", "arch"
+    # TODO: lots of options to add for different config defines
     options = {"shared": [True, False], "openssl": [True, False], "openssl11": [True, False]}
     default_options = "shared=False", "openssl=False", "openssl11=False", "OpenSSL:shared=True"
 
@@ -92,8 +93,9 @@ class AceConan(ConanFile):
                         tools.replace_in_file("SSL/SSL.vcxproj", "<RuntimeLibrary>MultiThreaded</RuntimeLibrary>", "<RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>", strict=False)
                         build_targets.append("SSL")
 
-                    msbuild = MSBuild(self)
-                    msbuild.build("ACE.sln", targets=build_targets, upgrade_project=True)
+                    with tools.environment_append({'CL': '/MP%s' % str(cpu_count())}):
+                        msbuild = MSBuild(self)
+                        msbuild.build("ACE.sln", targets=build_targets, upgrade_project=True, platforms={'x86': 'Win32', 'x86_64': 'x64'})
 
     def build(self):
         ace_wrappers_path_abs = self.source_folder + "/ACE_wrappers"
