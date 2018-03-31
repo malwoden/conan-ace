@@ -71,7 +71,7 @@ class AceConan(ConanFile):
             "12": "vc12",
             "14": "vc14",
             "15": "vs2017"
-        }[self.settings.compiler.version]
+        }[str(self.settings.compiler.version)]
 
     def build_windows_msvc(self, ace_wrappers_path_abs):
         openssl_include_path = ""
