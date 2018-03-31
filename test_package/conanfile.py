@@ -18,6 +18,10 @@ class AceTestConan(ConanFile):
 
     def build(self):
         cmake = CMake(self)
+
+        if self.options["ace"].openssl or self.options["ace"].openssl11:
+            cmake.definitions["WITH_SSL"] = "TRUE"
+
         # Current dir is "test_package/build/<build_id>" and CMakeLists.txt is in "test_package"
         cmake.configure()
         cmake.build()
