@@ -10,13 +10,25 @@ class AceConan(ConanFile):
     url = "https://github.com/malwoden/conan-ace"
     description = "ACE is a cpp utility framework focused on concurrent communication software"
     settings = "os", "compiler", "build_type", "arch"
-    # TODO: lots of options to add for different config defines
-    options = {"shared": [True, False], "openssl": [True, False], "openssl11": [True, False]}
-    default_options = "shared=False", "openssl=False", "openssl11=False", "OpenSSL:shared=True"
+
+    options = {"shared": [True, False],
+               "openssl": [True, False],
+               "openssl11": [True, False],
+               "hasTokensLibrary": [True, False],
+               "usesWchar": [True, False]}
+    default_options = ("shared=False",
+                       "openssl=False",
+                       "openssl11=False",
+                       "OpenSSL:shared=True",
+                       "hasTokensLibrary=False",
+                       "usesWchar=False")
 
     def configure(self):
         if self.options.openssl and self.options.openssl11:
             raise tools.ConanException("Cannot build with openssl and openssl11 flags")
+
+        if self.options.usesWchar and self.settings.os != "Windows":
+            self.options.usesWchar = False
 
     def build_requirements(self):
         if self.settings.os == "Windows":
@@ -33,6 +45,21 @@ class AceConan(ConanFile):
 
         tools.get("https://github.com/DOCGroup/ACE_TAO/releases/download/ACE+TAO-%s/ACE.%s" % (self.version.replace('.', '_'), extension))
 
+    def build_config_file_for_options(self):
+        contents = ""
+        if self.options.hasTokensLibrary:
+            contents += "#define ACE_HAS_TOKENS_LIBRARY\n"
+
+        if self.options.usesWchar:
+            contents += "#define ACE_USES_WCHAR\n"
+
+        return contents
+
+    def write_config_file(self, ace_wrappers_path, platform):
+        with open(ace_wrappers_path + "/ace/config.h", "w+") as f:
+            f.write(self.build_config_file_for_options())
+            f.write("#include \"ace/config-%s.h\"" % platform)
+
     def build_unix(self, ace_wrappers_path_abs):
         env_build = AutoToolsBuildEnvironment(self)
 
@@ -43,9 +70,7 @@ class AceConan(ConanFile):
                     tools.mkdir(install_location)
 
                     platform = "linux" if self.settings.os == "Linux" else "macosx"
-
-                    with open("%s/ace/config.h" % ace_wrappers_path_abs, "w+") as f:
-                        f.write("#include \"ace/config-%s.h\"" % platform)
+                    self.write_config_file(ace_wrappers_path_abs, platform)
 
                     with open("%s/include/makeinclude/platform_macros.GNU" % ace_wrappers_path_abs, "w+") as f:
                         file_strings = []
@@ -88,8 +113,7 @@ class AceConan(ConanFile):
                  "CL": "/MP%s" % str(cpu_count())}):
 
             with tools.chdir(ace_wrappers_path_abs):
-                with open("%s/ace/config.h" % ace_wrappers_path_abs, "w+") as f:
-                    f.write("#include \"ace/config-win32.h\"")
+                self.write_config_file(ace_wrappers_path_abs, "win32")
 
                 with open("%s/bin/MakeProjectCreator/config/default.features" % ace_wrappers_path_abs, "w+") as f:
                     file_strings = []
