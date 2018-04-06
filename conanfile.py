@@ -29,9 +29,11 @@ class AceConan(ConanFile):
             self.requires("OpenSSL/1.1.0g@conan/stable")
 
     def source(self):
-        tools.get("https://github.com/DOCGroup/ACE_TAO/releases/download/ACE+TAO-%s/ACE.zip" % self.version.replace('.', '_'))
+        extension = "zip" if self.settings.os == "Windows" else "tar.gz"
 
-    def build_linux(self, ace_wrappers_path_abs):
+        tools.get("https://github.com/DOCGroup/ACE_TAO/releases/download/ACE+TAO-%s/ACE.%s" % (self.version.replace('.', '_'), extension))
+
+    def build_unix(self, ace_wrappers_path_abs):
         env_build = AutoToolsBuildEnvironment(self)
 
         with tools.environment_append(env_build.vars):
@@ -40,8 +42,10 @@ class AceConan(ConanFile):
                     install_location = ace_wrappers_path_abs + "/build_install"
                     tools.mkdir(install_location)
 
+                    platform = "linux" if self.settings.os == "Linux" else "macosx"
+
                     with open("%s/ace/config.h" % ace_wrappers_path_abs, "w+") as f:
-                        f.write("#include \"ace/config-linux.h\"")
+                        f.write("#include \"ace/config-%s.h\"" % platform)
 
                     with open("%s/include/makeinclude/platform_macros.GNU" % ace_wrappers_path_abs, "w+") as f:
                         file_strings = []
@@ -50,7 +54,7 @@ class AceConan(ConanFile):
                         file_strings.append("shared_libs_only=1" if self.options.shared else "static_libs_only=1")
                         file_strings.append("buildbits=32" if self.settings.arch == "x86" else "buildbits=64")
                         file_strings.append("debug=1" if self.settings.build_type == "Debug" else "optimize=1")
-                        file_strings.append("include %s/include/makeinclude/platform_linux.GNU" % ace_wrappers_path_abs)
+                        file_strings.append("include %s/include/makeinclude/platform_%s.GNU" % (ace_wrappers_path_abs, platform))
                         f.writelines(line + '\n' for line in file_strings)
 
                     openssl_include_path = ""
@@ -109,9 +113,9 @@ class AceConan(ConanFile):
     def build(self):
         ace_wrappers_path_abs = self.source_folder + "/ACE_wrappers"
 
-        if self.settings.os == "Linux":
-            self.build_linux(ace_wrappers_path_abs)
-        else:
+        if self.settings.os == "Linux" or self.settings.os == "Macos":
+            self.build_unix(ace_wrappers_path_abs)
+        elif self.settings.os == "Windows":
             self.build_windows_msvc(ace_wrappers_path_abs)
 
     # ACE includes cpp files from header files, so we need to find those files
@@ -125,7 +129,7 @@ class AceConan(ConanFile):
                     self.copy(match.groups()[0], dst="include/ace", src=ace_wrappers_path + "/ace")
 
     def package(self):
-        if self.settings.os == "Linux":
+        if self.settings.os == "Linux" or self.settings.os == "Macos":
             install_src_abs = self.source_folder + "/ACE_wrappers/build_install"
             self.copy("*.h", dst="include", src=install_src_abs + "/include")
             # ace has template funcs in cpp files included in header files
@@ -134,7 +138,7 @@ class AceConan(ConanFile):
             self.copy("*.so*", dst="lib", src=install_src_abs + "/lib", keep_path=False)
             self.copy("*.dylib", dst="lib", keep_path=False)
             self.copy("*.a*", dst="lib",  src=install_src_abs + "/lib", keep_path=False)
-        else:
+        elif self.settings.os == "Windows":
             ace_src_path = self.source_folder + "/ACE_wrappers"
             ace_lib_path = ace_src_path + "/lib"
 
