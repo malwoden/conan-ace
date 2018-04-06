@@ -64,9 +64,9 @@ class AceConan(ConanFile):
                     self.run("$ACE_ROOT/bin/mwc.pl -type gnuace ACE.mwc")
                     with tools.chdir("ace"):
                         if self.options.openssl or self.options.openssl11:
-                            self.run("CFLAGS=\"-I%s\" make -j %s && make install" % (openssl_include_path, str(cpu_count())))
+                            self.run("CFLAGS=\"-I%s\" make ACE SSL -j %s && make install" % (openssl_include_path, str(cpu_count())))
                         else:
-                            self.run("make -j %s && make install" % str(cpu_count()))
+                            self.run("make ACE -j %s && make install" % str(cpu_count()))
 
     def msvc_compiler_to_mwc_type(self):
         return {
