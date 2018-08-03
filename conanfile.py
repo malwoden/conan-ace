@@ -75,7 +75,7 @@ class AceConan(ConanFile):
                     with open("%s/include/makeinclude/platform_macros.GNU" % ace_wrappers_path_abs, "w+") as f:
                         file_strings = []
                         file_strings.append("INSTALL_PREFIX = " + install_location)
-                        file_strings.append("ssl=1" if self.options.openssl else "ssl=0")
+                        file_strings.append("ssl=1" if self.options.openssl or self.options.openssl11 else "ssl=0")
                         file_strings.append("shared_libs_only=1" if self.options.shared else "static_libs_only=1")
                         file_strings.append("buildbits=32" if self.settings.arch == "x86" else "buildbits=64")
                         file_strings.append("debug=1" if self.settings.build_type == "Debug" else "optimize=1")
